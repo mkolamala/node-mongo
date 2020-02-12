@@ -1,37 +1,45 @@
-const mongoClient = require("mongodb").MongoClient;
+const mongoClient = require('mongodb').MongoClient;
+const assert = require('assert').strict;
+const dboper = require('./operations');
 
-const assert = require("assert").strict;
+const url = 'mongodb://localhost:27017/';
+const dbname = 'nucampsite';
 
-const url = "mongodb://localhost:27017/";
+mongoClient.connect(url, { useUnifiedTopology: true }).then(client => {
 
-const dbname = "nucampsite";
+    console.log('Connected correctly to server');
+    const db = client.db(dbname);
 
-mongoClient.connect(url, { useUnifiedTopology: true }, (err, client) => {
-  assert.strictEqual(err, null);
+    dboper.insertDocument(db, { name: "Breadcrumb Trail Campground", description: "Test"},
+        'campsites')
+        .then(result => {
+            console.log('Insert Document:\n', result.ops);
 
-  console.log("Connected to MongoDB server successfully");
+            return dboper.findDocuments(db, 'campsites');
+        })
+        .then(docs => {
+                console.log('Found Documents:\n', docs);
 
-  const db = client.db(dbname);
+            return dboper.updateDocument(db, { name: "Breadcrumb Trail Campground" },
+                    { description: "Updated Test" }, 'campsites');
 
-  db.dropCollection("campsites", (err, result) => {
-    assert.strictEqual(err, null);
-    console.log("Dropped Collection", result);
+        })
+        .then(result => {
+            console.log('Updated Document:\n', result.result);
 
-    const collection = db.collection("campsites");
+            return dboper.findDocuments(db, 'campsites');
+        })
+        .then(docs => {
+            console.log('Found Updated Documents:\n', docs);
+                            
+            return db.dropCollection('campsites');
+        })
+        .then(result => {
+            console.log('Dropped Collection:', result);
 
-    collection.insertOne(
-      { name: "Breadcrumb Trail Campground", description: "Test" },
-      (err, result) => {
-        assert.strictEqual(err, null);
-        console.log("Insert Document:", result.ops);
+            return client.close();
+        })
+        .catch(err => console.log(err));
 
-        collection.find().toArray((err, docs) => {
-          assert.strictEqual(err, null);
-          console.log("Found Documents:", docs);
-
-          client.close();
-        });
-      }
-    );
-  });
-});
+})
+.catch(err => console.log(err));
